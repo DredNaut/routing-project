@@ -33,6 +33,7 @@ class Zone:
         self.index = index
         self.node = None
         self.route = None
+        self.crumb = False
     def installNode (self):
         self.node = Node(self.x, self.y, tower, self.index)
         canvas.create_image(self.x, self.y, image = self.node.image, anchor = NW)
@@ -45,14 +46,19 @@ class Zone:
             return True
         else:
             return False
-    def getRight ():
+    def getRight (self):
         return self.index+1
-    def getLeft ():
+    def getLeft (self):
         return self.index-1
-    def getUp ():
-        return self.index+cavas_width
-    def getBelow ():
-        return self.index-cavas_width
+    def getUp (self):
+        return self.index+canvas_width
+    def getBelow (self):
+        return self.index-canvas_width
+    def resetCrumb (self):
+        self.crumb = False
+    def setCrumb (self):
+        self.crumb = True
+        print "Crumb set on " + str(self.index)
 
 class Node:
     def __init__ (self, x, y, image, index):
@@ -113,22 +119,106 @@ for y in range(canvas_width):
             tkMap.append(Zone(5, red5, 1.0, x*pixel_size, y*pixel_size, x+y*canvas_width))
             canvas.create_image(x*pixel_size, y*pixel_size, image = red5, anchor = NW)
 
+#def plotPath(pathArray):
+#    for z in range(len(pathArray)-2):
+#        if (pathArray[z]+canvas_width+1 == pathArray[z+2] and pathArray[z+1] == pathArray[z]+1):
+#            canvas.create_image(tkMap[pathArray[z+1]].x, tkMap[pathArray[z+1]].y, image = route_bl, anchor = NW)
+#            canvas.create_image(tkMap[pathArray[z]].x, tkMap[pathArray[z]].y, image = route_lr, anchor = NW)
+#        elif (pathArray[z]+canvas_width-1 == pathArray[z+2] and pathArray[z+1] == pathArray[z]-1):
+#            canvas.create_image(tkMap[pathArray[z+1]].x, tkMap[pathArray[z+1]].y, image = route_br, anchor = NW)
+#            canvas.create_image(tkMap[pathArray[z]].x, tkMap[pathArray[z]].y, image = route_lr, anchor = NW)
+#        elif (pathArray[z]+canvas_width+1 == pathArray[z+2] and pathArray[z+1] == pathArray[z]+canvas_width):
+#            canvas.create_image(tkMap[pathArray[z+1]].x, tkMap[pathArray[z+1]].y, image = route_ur, anchor = NW)
+#            canvas.create_image(tkMap[pathArray[z]].x, tkMap[pathArray[z]].y, image = route_ub, anchor = NW)
+#        elif (pathArray[z]+canvas_width-1 == pathArray[z+2] and pathArray[z+1] == pathArray[z]+canvas_width):
+#            canvas.create_image(tkMap[pathArray[z+1]].x, tkMap[pathArray[z+1]].y, image = route_ul, anchor = NW)
+#            canvas.create_image(tkMap[pathArray[z]].x, tkMap[pathArray[z]].y, image = route_ub, anchor = NW)
+#        elif (pathArray[z+1] == pathArray[z]+1 and pathArray[z+2] == pathArray[z]+2):
+#            canvas.create_image(tkMap[pathArray[z]].x, tkMap[pathArray[z]].y, image = route_lr, anchor = NW)
+#        elif (pathArray[z]-1 == pathArray[z+1] and pathArray[z]-2 == pathArray[z+2]):
+#            canvas.create_image(tkMap[pathArray[z]].x, tkMap[pathArray[z]].y, image = route_lr, anchor = NW)
+#        elif (pathArray[z]-canvas_width == pathArray[z+1] and pathArray[z]-(2*canvas_width) == pathArray[z+2]):
+#            canvas.create_image(tkMap[pathArray[z]].x, tkMap[pathArray[z]].y, image = route_ub, anchor = NW)
+#        elif (pathArray[z]+canvas_width == pathArray[z+1] and pathArray[z]+(2*canvas_width) == pathArray[z+2]):
+#            canvas.create_image(tkMap[pathArray[z]].x, tkMap[pathArray[z]].y, image = route_ub, anchor = NW)
+
+
+
+def isInYBound (index):
+    if ((index - canvas_width < 0) or (index + canvas_width > canvas_width*canvas_height)):
+        return False
+    else:
+        return True
+
+def isInRightBound (index):
+    if (index + 1 % canvas_width == 0 or index > canvas_width*canvas_height):
+        return False
+    else:
+        return True
+
+def isInLeftBound (index):
+    if (index % canvas_width == 0 or index == 0 or index < -1):
+        return False
+    else:
+        return True
 
 def checkSurrounding (index):
-    if (tkMap[tkMap[index].getUp()].isNode()):
-        print "Found Node"
+    if (tkMap[tkMap[index].getUp()].isNode()) and (tkMap[tkMap[index].getUp()].crumb == False):
+        print ("Found Node Below of index: ", index )
         return True
-    elif (tkMap[tkMap[index].getRight()].isNode()):
-        print "Found Node"
+    elif (tkMap[tkMap[index].getRight()].isNode()) and (tkMap[tkMap[index].getRight()].crumb == False):
+        print ("Found Node Right of index: ", index)
         return True
-    elif (tkMap[tkMap[index].getBelow()].isNode()):
-        print "Found Node"
+    elif (tkMap[tkMap[index].getBelow()].isNode()) and (tkMap[tkMap[index].getBelow()].crumb == False) and isInYBound(index):
+        print ("Found Node Above of index: ", index)
         return True
-    elif (tkMap[tkMap[index].getLeft()].isNode()):
-        print "Found Node"
+    elif (tkMap[tkMap[index].getLeft()].isNode()) and (tkMap[tkMap[index].getLeft()].crumb == False) and isInLeftBound(index):
+        print ("Found Node Left of index: ", index)
+        print tkMap[tkMap[index].getLeft()].crumb
+        print tkMap[tkMap[index].getLeft()].index
         return True
     else:
         return False
+
+def chooseNextRoute (index):
+    path=[]
+    path.append(index)
+    tmp = -1
+    tkMap[index].setCrumb()
+    while not checkSurrounding (index):
+#    for x in range(1,50): 
+        cost = 10
+        print index
+        if (isInYBound(tkMap[index].getUp()) and not tkMap[tkMap[index].getUp()].crumb):
+            if (tkMap[tkMap[index].getUp()].resistance < cost):
+                cost = tkMap[tkMap[index].getUp()].resistance
+                tmp = tkMap[index].getUp()
+        if (isInRightBound(tkMap[index].getRight()) and not tkMap[tkMap[index].getRight()].crumb):
+            if (tkMap[tkMap[index].getRight()].resistance < cost):
+                cost = tkMap[tkMap[index].getRight()].resistance
+                tmp = tkMap[index].getRight()
+        if (isInYBound(tkMap[index].getBelow()) and  not tkMap[tkMap[index].getBelow()].crumb):
+            if (tkMap[tkMap[index].getBelow()].resistance < cost):
+                cost = tkMap[tkMap[index].getBelow()].resistance
+                tmp = tkMap[index].getBelow()
+        if (isInLeftBound(index) and not tkMap[tkMap[index].getLeft()].crumb):
+            if (tkMap[tkMap[index].getLeft()].resistance < cost):
+                cost = tkMap[tkMap[index].getLeft()].resistance
+                tmp = tkMap[index].getLeft()
+        print ("Index of next Zone: ", tmp)
+        if (tmp == index):
+            print "Stuck, Backtracking"
+            tkMap[tmp].setCrumb()
+            index = path[len(path)-3]
+            print path[len(path)-3]
+        else:
+            tkMap[tmp].setCrumb()
+            index = tmp
+            path.append(tmp)
+    for x in range(len(path)):
+        print path[x]
+#    plotPath(path)
+
 #for x in range(0,len(tkMap)):
 #    if (x % canvas_width == 0 and x>2):
 #        print
@@ -138,6 +228,8 @@ tkMap[0].installNode()
 tkMap[canvas_width-1].installNode()
 tkMap[(canvas_width-1)*(canvas_height)].installNode()
 tkMap[(canvas_width)*(canvas_height)-1].installNode()
+
+chooseNextRoute(0)
 
 # run it ...
 mainloop()
