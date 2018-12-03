@@ -251,11 +251,13 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         message = data
         message = ''.join(message.decode().split())
         check = message.split(":")
-        if (check[0] != "route"):
-            print(message)
+        if (check[0] == "route"):
+            self.handleDV(check)
+        elif (int(check[0]) == NID):
+            print(check[1])
             os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")            
         else: 
-            self.handleDV(check)
+            send_udp(check[0], message, False)
 
 
 
@@ -304,29 +306,53 @@ def send_tcp(dest_nid, message):
         pass
 
 # function: hello (alive)
-def send_udp(dest_nid, message):
+def send_udp(dest_nid, message, dv_flag):
 
     # global variables
     global NID, hostname, tcp_port
     global l1_hostname, l2_hostname, l3_hostname, l4_hostname
     global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port    
     global l1_NID, l2_NID, l3_NID, l4_NID
+    local_routing_table = node.Get_routing_table()
 
-    if dest_nid == str(l1_NID):
-        HOST = l1_hostname
-        PORT = l1_udp_port
+    # DV Propagation
+    if (dv_flag):
+        if dest_nid == str(l1_NID):
+            HOST = l1_hostname
+            PORT = l1_udp_port
 
-    elif dest_nid == str(l2_NID):
-        HOST = l2_hostname
-        PORT = l2_udp_port
+        elif dest_nid == str(l2_NID):
+            HOST = l2_hostname
+            PORT = l2_udp_port
 
-    elif dest_nid == str(l3_NID):
-        HOST = l3_hostname
-        PORT = l3_udp_port
+        elif dest_nid == str(l3_NID):
+            HOST = l3_hostname
+            PORT = l3_udp_port
 
-    elif dest_nid == str(l4_NID):
-        HOST = l4_hostname
-        PORT = l4_udp_port
+        elif dest_nid == str(l4_NID):
+            HOST = l4_hostname
+            PORT = l4_udp_port
+
+    # Forwarding Messages
+    elif int(dest_nid) in local_routing_table:
+        next = str(local_routing_table[int(dest_nid)][2])
+        print ("NEXT: "+next)
+
+        if next == str(l1_NID):
+            HOST = l1_hostname
+            PORT = l1_udp_port
+
+        elif next == str(l2_NID):
+            HOST = l2_hostname
+            PORT = l2_udp_port
+
+        elif next == str(l3_NID):
+            HOST = l3_hostname
+            PORT = l3_udp_port
+
+        elif next == str(l4_NID):
+            HOST = l4_hostname
+            PORT = l4_udp_port
 
     else:
         print('no address information for destination')
@@ -435,7 +461,7 @@ def PrintInfo():
 # update the route
 def sendDV():
     linksAll = (node.Get_link_table())
-    myLink = linksAll[NID-1]
+    myLink = linksAll[NID]
     message = "route:"+str(NID)
     temp = node.Get_routing_table()
 
@@ -450,17 +476,17 @@ def sendDV():
         message += (":"+str(temp[l4_NID]))
 
     if (l1_NID != 0):
-        send_udp(str(l1_NID), message)
+        send_udp(str(l1_NID), message, True)
     if (l2_NID != 0):
-        send_udp(str(l2_NID), message)
+        send_udp(str(l2_NID), message, True)
     if (l3_NID != 0):
-        send_udp(str(l3_NID), message)
+        send_udp(str(l3_NID), message, True)
     if (l4_NID != 0):
-        send_udp(str(l4_NID), message)
+        send_udp(str(l4_NID), message, True)
 
 def init_routing_table():
     linksAll = (node.Get_link_table())
-    myLink = linksAll[NID-1]
+    myLink = linksAll[NID]
     node.Set_routing_table(NID,0,NID)
     if (l1_NID != 0):
         node.Set_routing_table(l1_NID, 1, l1_NID)
@@ -526,7 +552,8 @@ def main(argv):
             os.system('clear')
             dest_nid = input("enter node to message: ")
             message = input("enter the message you want to send: ")
-            send_udp(dest_nid, message)
+            message = dest_nid+":"+message
+            send_udp(dest_nid, message, False)
             os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")            
 
         # selection: quit
