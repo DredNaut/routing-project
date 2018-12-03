@@ -261,15 +261,34 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         # Ping echo-reply
         elif (check[0] == "p" and check[1] == "1"):
             print ("Node: "+check[2]+" is up")
-            
+            setUpFlag(int(check[2]))
         elif (int(check[0]) == NID):
             print(check[1])
             os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
         else:
             send_udp(check[0], message, False)
 
+#Setting the Flags when we find that a connected node is up
+def setUpFlag(NID)
+    if(NID == 1)
+        node.SetUpFlagL1(True)
+    if(NID == 2)
+        node.SetUpFlagL2(True)
+    if(NID == 3)
+        node.SetUpFlagL3(True)
+    if(NID == 4)
+        node.SetUpFlagL4(True)
 
 
+def setDownFlag(NID)
+    if(NID == 1)
+        node.SetUpFlagL1(False)
+    if(NID == 2)
+        node.SetUpFlagL2(False)
+    if(NID == 3)
+        node.SetUpFlagL3(False)
+    if(NID == 4)
+        node.SetUpFlagL4(False)
 
 # Function: sendto()
 def send_tcp(dest_nid, message):
