@@ -465,6 +465,8 @@ def sendDV():
     message = "route:"+str(NID)
     temp = node.Get_routing_table()
 
+    for key, value in temp.items():
+        message += (":"+str(value))
 
     if (l1_NID != 0):
         message += (":"+str(temp[l1_NID]))
