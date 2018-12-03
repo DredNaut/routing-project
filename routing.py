@@ -103,7 +103,7 @@ class Node(object):
         self.upL4 = False
         self.link_table = {}
         self.address_data_table = {}
-    
+
     # get nid
     def GetNID (self):
         return self.nid
@@ -145,7 +145,7 @@ class Node(object):
 
     # get up flag for neighbor 2
     def GetUpFlagL4 (self):
-        return self.upL4    
+        return self.upL4
 
     # set up flag for neighbor 1
     def SetUpFlagL1 (self, flag):
@@ -192,7 +192,7 @@ class Node(object):
         self.routing_table[nid] = nid, cost, next
 
 # class TCP Handler (this receives all TCP messages)
-class MyTCPHandler(socketserver.BaseRequestHandler):    
+class MyTCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
 
@@ -207,7 +207,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         message = self.data
         message = ''.join(message.decode().split())
         print(message)
-        os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")                    
+        os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
 # Class: MyUDPHandler (this receives all UDP messages)
 class MyUDPHandler(socketserver.BaseRequestHandler):
@@ -238,7 +238,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             received.append(message[i].strip('()').split(","))
         temp = node.Get_routing_table()
         self.compareEntries(received, sender)
-            
+
 
 
     # interrupt handler for incoming messages
@@ -255,8 +255,8 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             self.handleDV(check)
         elif (int(check[0]) == NID):
             print(check[1])
-            os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")            
-        else: 
+            os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
+        else:
             send_udp(check[0], message, False)
 
 
@@ -268,7 +268,7 @@ def send_tcp(dest_nid, message):
     # global variables
     global NID, hostname, tcp_port
     global l1_hostname, l2_hostname, l3_hostname, l4_hostname
-    global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port    
+    global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
     global l1_NID, l2_NID, l3_NID, l4_NID
 
     # look up address information for the destination node
@@ -296,7 +296,7 @@ def send_tcp(dest_nid, message):
 
     # send message
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((HOST, PORT))
         sock.sendall(message)
         sock.close()
@@ -311,7 +311,7 @@ def send_udp(dest_nid, message, dv_flag):
     # global variables
     global NID, hostname, tcp_port
     global l1_hostname, l2_hostname, l3_hostname, l4_hostname
-    global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port    
+    global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
     global l1_NID, l2_NID, l3_NID, l4_NID
     local_routing_table = node.Get_routing_table()
 
@@ -365,8 +365,20 @@ def send_udp(dest_nid, message, dv_flag):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
         sock.sendto(message, (HOST, PORT))
     except:
-        print('error, message not sent')            
+        print('error, message not sent')
         pass
+
+def pingNode(self):
+    pingMessage = "p:0",str(NID)
+    if (l1_NID != 0):
+        send_udp(str(l1_NID), pingMessage, False)
+    if (l2_NID != 0):
+        send_udp(str(l2_NID), pingMessage, False)
+    if (l3_NID != 0):
+        send_udp(str(l3_NID), pingMessage, False)
+    if (l4_NID != 0):
+        send_udp(str(l4_NID), pingMessage, False)
+
 
 # function: start listener
 def start_listener():
@@ -375,7 +387,7 @@ def start_listener():
     global node, NID, hostname, udp_port, tcp_port
     global l1_hostname, l2_hostname, l3_hostname, l4_hostname
     global l1_udp_port, l2_udp_port, l3_udp_port, l4_udp_port
-    global l1_tcp_port, l2_tcp_port, l3_tcp_port, l4_tcp_port    
+    global l1_tcp_port, l2_tcp_port, l3_tcp_port, l4_tcp_port
     global l1_NID, l2_NID, l3_NID, l4_NID
 
     # check links for node attributes
@@ -492,11 +504,11 @@ def init_routing_table():
     node.Set_routing_table(NID,0,NID)
     if (l1_NID != 0):
         node.Set_routing_table(l1_NID, 1, l1_NID)
-    if (l2_NID != 0):                
+    if (l2_NID != 0):
         node.Set_routing_table(l2_NID, 1, l2_NID)
-    if (l3_NID != 0):                
+    if (l3_NID != 0):
         node.Set_routing_table(l3_NID, 1, l3_NID)
-    if (l4_NID != 0):                
+    if (l4_NID != 0):
         node.Set_routing_table(l4_NID, 1, l4_NID)
 
 
@@ -529,9 +541,10 @@ def main(argv):
         #print menu options
         os.system('clear')
         sendDV()
+        pingNode()
         print("Enter 'info' to check network information")
         print("Enter 'send_tcp' to message another node via TCP")
-        print("Enter 'send_udp' to message another node via UDP")        
+        print("Enter 'send_udp' to message another node via UDP")
         print("Enter 'q' to end program")
 
         # set selection value from user
@@ -556,7 +569,7 @@ def main(argv):
             message = input("enter the message you want to send: ")
             message = dest_nid+":"+message
             send_udp(dest_nid, message, False)
-            os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")            
+            os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
         # selection: quit
         elif(selection == 'q'):
