@@ -2,7 +2,7 @@
 import socket
 import sys
 import threading
-from threading import Thread
+import threading
 import socketserver
 import os
 import time
@@ -255,11 +255,11 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             self.handleDV(check)
 
         # Ping request
-        elif (check[0] == "p" and check[1] == "0")
+        elif (check[0] == "p" and check[1] == "0"):
             ping_message = "p:1:"+str(NID)
-            send_udp(int(check[2]), ping_message)
+            send_udp(int(check[2]), ping_message, False)
         # Ping echo-reply
-        elif (check[0] == "p" and check[1] == "1")
+        elif (check[0] == "p" and check[1] == "1"):
             print ("Node: "+check[2]+" is up")
             
         elif (int(check[0]) == NID):
@@ -314,6 +314,23 @@ def send_tcp(dest_nid, message):
         print('error, message not sent')
         pass
 
+def ping_timeout(NID):
+    for i in range(10):
+        if (NID == 1):
+            node.GetUpFlagL1()
+        elif (NID == 2):
+            node.GetUpFlagL2()
+        elif (NID == 3):
+            node.GetUpFlagL3()
+        elif (NID == 4):
+            node.GetUpFlagL4()
+        time.sleep(.1)
+
+    print("Node "+NID+" is down")
+    setDownFlag(NID)
+
+    
+
 # function: hello (alive)
 def send_udp(dest_nid, message, dv_flag):
 
@@ -345,7 +362,7 @@ def send_udp(dest_nid, message, dv_flag):
     # Forwarding Messages
     elif int(dest_nid) in local_routing_table:
         next = str(local_routing_table[int(dest_nid)][2])
-        print ("NEXT: "+next)
+        print ("Sent to : "+next)
 
         if next == str(l1_NID):
             HOST = l1_hostname
@@ -377,16 +394,20 @@ def send_udp(dest_nid, message, dv_flag):
         print('error, message not sent')
         pass
 
-def pingNode(self):
-    pingMessage = "p:0",str(NID)
+def pingNode():
+    pingMessage = "p:0:"+str(NID)
     if (l1_NID != 0):
         send_udp(str(l1_NID), pingMessage, False)
+        threading.Thread(target=pingNode,args=(l1_NID))
     if (l2_NID != 0):
         send_udp(str(l2_NID), pingMessage, False)
+        threading.Thread(target=pingNode,args=(l2_NID))
     if (l3_NID != 0):
         send_udp(str(l3_NID), pingMessage, False)
+        threading.Thread(target=pingNode,args=(l3_NID))
     if (l4_NID != 0):
         send_udp(str(l4_NID), pingMessage, False)
+        threading.Thread(target=pingNode,args=(l4_NID))
 
 
 # function: start listener
