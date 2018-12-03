@@ -253,6 +253,15 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         check = message.split(":")
         if (check[0] == "route"):
             self.handleDV(check)
+
+        # Ping request
+        elif (check[0] == "p" and check[1] == "0")
+            ping_message = "p:1:"+str(NID)
+            send_udp(int(check[2]), ping_message)
+        # Ping echo-reply
+        elif (check[0] == "p" and check[1] == "1")
+            print ("Node: "+check[2]+" is up")
+            
         elif (int(check[0]) == NID):
             print(check[1])
             os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")            
