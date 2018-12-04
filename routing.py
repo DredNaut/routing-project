@@ -1,5 +1,6 @@
 # header files
 import socket
+import signal
 import sys
 import threading
 import threading
@@ -10,6 +11,8 @@ import random
 from random import randint
 
 # set global variables
+print_debug = False
+run = True
 NID = 0
 hostname = ' '
 udp_port = 0
@@ -203,17 +206,20 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         global l1_tcp_port,l2_tcp_port, l3_tcp_port, l4_tcp_port
         global l1_NID, l2_NID, l3_NID, l4_NID
         global add_counter, update_counter, remove_counter
+        global print_debug
 
         self.data = self.request.recv(1024)
         message = self.data
         message = ''.join(message.decode().split())
-        print(message)
+        if(print_debug):
+            print(message)
         os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
 # Class: MyUDPHandler (this receives all UDP messages)
 class MyUDPHandler(socketserver.BaseRequestHandler):
 
     def compareEntries(self, new_routing, sender):
+        global print_debug
         my_routing = node.Get_routing_table()
         for i in range(0, len(new_routing)):
             nodeE = new_routing[i][0]
@@ -223,7 +229,8 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
                     continue
                 # If a cheaper path is found
                 elif (int(new_routing[i][1])+1 < int(my_routing[int(nodeE)][1])):
-                    print("FOUND BETTER PATH TO NODE : "+nodeE+"\nThrough : "+str(sender))
+                    if(print_debug):
+                        print("FOUND BETTER PATH TO NODE : "+nodeE+"\nThrough : "+str(sender))
                     node.Set_routing_table(int(nodeE),int(new_routing[i][1])+1,sender)
                 else:
                     continue
@@ -231,7 +238,8 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             elif not int(nodeE) in node.removed_nodes:
                 node.Set_routing_table(int(nodeE),int(new_routing[i][1])+1,sender)
                 setUpFlag(int(nodeE))
-                print("New Routing Entry Added\nNode : "+nodeE+"\nThrough : "+str(sender))
+                if(print_debug):
+                    print("New Routing Entry Added\nNode : "+nodeE+"\nThrough : "+str(sender))
             #elif (my_routing[i][received[]):
 
     def handleDV(self, message):
@@ -248,25 +256,30 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
     # interrupt handler for incoming messages
     def handle(self):
 
+        global print_debug
         # parse received data
         data = self.request[0].strip()
+
 
         # set message and split
         message = data
         message = ''.join(message.decode().split())
         check = message.split(":")
         if (check[0] == "route"):
-            print("ROUTE:"+str(check))
+            if(print_debug):
+                print("ROUTE:"+str(check))
             self.handleDV(check)
 
         # Ping request
         elif (check[0] == "p" and check[1] == "0"):
-            print("PING RECIEVED SENDING RESPONSE")
+            if(print_debug):
+                print("PING RECIEVED SENDING RESPONSE")
             ping_message = "p:1:"+str(NID)
             send_udp(int(check[2]), ping_message, False, True)
         # Ping echo-reply
         elif (check[0] == "p" and check[1] == "1"):
-            print ("Node: "+check[2]+" is up")
+            if(print_debug):
+                print ("Node: "+check[2]+" is up")
             setUpFlag(int(check[2]))
         elif (int(check[0]) == NID):
             print(check[1])
@@ -340,7 +353,9 @@ def send_tcp(dest_nid, message):
         pass
 
 def ping_timeout(NID):
-    print("Checking "+str(NID))
+    global print_debug
+    if(print_debug):
+        print("Checking "+str(NID))
     for i in range(15):
         if (NID == l1_NID and node.GetUpFlagL1()):
             return
@@ -355,7 +370,8 @@ def ping_timeout(NID):
     if (NID in node.routing_table):
         del node.routing_table[NID]
 
-    print("\nNode "+str(NID)+" is down")
+    if(print_debug):
+        print("\nNode "+str(NID)+" is down")
     setDownFlag(NID)
 
     
@@ -392,7 +408,9 @@ def send_udp(dest_nid, message, dv_flag, ping_flag):
     # Forwarding Messages
     elif int(dest_nid) in local_routing_table:
         next = str(local_routing_table[int(dest_nid)][2])
-        print ("Sent to : "+next)
+        global print_debug
+        if(print_debug):
+            print ("Sent to : "+next)
 
         if next == str(l1_NID):
             HOST = l1_hostname
@@ -549,6 +567,7 @@ def PrintInfo():
 
 # update the route
 def sendDV():
+    global print_debug
     message = "route:"+str(NID)
     temp = node.Get_routing_table()
 
@@ -557,7 +576,8 @@ def sendDV():
         message += (":"+str(value))
     message+= ":"+str(node.removed_nodes)
 
-    print (message)
+    if(print_debug):
+        print (message)
 
     if (l1_NID != 0 ):
         send_udp(str(l1_NID), message, True, False)
@@ -573,28 +593,29 @@ def init_routing_table():
     node.Set_routing_table(NID,0,NID)
 
 def background_tasks():
+    global run
     i = 0
-    while(True):
+    while(run):
         if i < 5:
             i = 0
             node.removed_nodes = []
         i += 1
-        time.sleep(20)
+        if run:
+            time.sleep(10)
         #if (len(node.Get_routing_table()) == 1):
         #    continue
         pingNode()
         time.sleep(2)
         sendDV()
-        print("Background Running")
 
 # main function
 def main(argv):
 
     # global variables
     global node
+    global run
 
     # set initial value for loop
-    run = 1
 
     # check for command line arguments
     if len(sys.argv) != 3:
@@ -618,7 +639,6 @@ def main(argv):
         #print menu options
         os.system('clear')
         print("Enter 'info' to check network information")
-        print("Enter 'send_tcp' to message another node via TCP")
         print("Enter 'send_udp' to message another node via UDP")
         print("Enter 'q' to end program")
 
@@ -628,14 +648,6 @@ def main(argv):
         # selection: status
         if selection == 'info':
             PrintInfo()
-
-        # selection: send_tcp
-        elif(selection == 'send_tcp'):
-            os.system('clear')
-            dest_nid = input("enter node to message: ")
-            message = input("enter the message you want to send: ")
-            send_tcp(dest_nid, message)
-            os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
         # selection: send_udp
         elif(selection == 'send_udp'):
@@ -648,7 +660,9 @@ def main(argv):
 
         # selection: quit
         elif(selection == 'q'):
+            print("Please wait shutting down thread")
             run = 0
+            t1.join()
             os.system('clear')
 
         else:
