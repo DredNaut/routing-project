@@ -217,29 +217,32 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         my_routing = node.Get_routing_table()
         for i in range(0, len(new_routing)):
             nodeE = new_routing[i][0]
+            # IF the entry is already in the routing table
             if (int(nodeE) in my_routing):
                 if (int(nodeE) == NID):
                     continue
+                # If a cheaper path is found
                 elif (int(new_routing[i][1])+1 < int(my_routing[int(nodeE)][1])):
                     print("FOUND BETTER PATH TO NODE : "+nodeE+"\nThrough : "+str(sender))
                     node.Set_routing_table(int(nodeE),int(new_routing[i][1])+1,sender)
                 else:
                     continue
-            else:
+            # Else add entry to the routing table
+            elif not int(nodeE) in node.removed_nodes:
                 node.Set_routing_table(int(nodeE),int(new_routing[i][1])+1,sender)
-                setUpFlags(int(nodeE))
+                setUpFlag(int(nodeE))
                 print("New Routing Entry Added\nNode : "+nodeE+"\nThrough : "+str(sender))
             #elif (my_routing[i][received[]):
 
     def handleDV(self, message):
         received = []
+        dead_list = []
 
         sender = int(message[1])
         for i in range(2, len(message)-1):
             received.append(message[i].strip('()').split(","))
         temp = node.Get_routing_table()
         self.compareEntries(received, sender)
-
 
 
     # interrupt handler for incoming messages
@@ -253,13 +256,14 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         message = ''.join(message.decode().split())
         check = message.split(":")
         if (check[0] == "route"):
+            print("ROUTE:"+str(check))
             self.handleDV(check)
 
         # Ping request
         elif (check[0] == "p" and check[1] == "0"):
             print("PING RECIEVED SENDING RESPONSE")
             ping_message = "p:1:"+str(NID)
-            send_udp(int(check[2]), ping_message, False)
+            send_udp(int(check[2]), ping_message, False, True)
         # Ping echo-reply
         elif (check[0] == "p" and check[1] == "1"):
             print ("Node: "+check[2]+" is up")
@@ -268,28 +272,28 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             print(check[1])
             os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
         else:
-            send_udp(check[0], message, False)
+            send_udp(check[0], message, False, False)
 
 #Setting the Flags when we find that a connected node is up
 def setUpFlag(NID):
-    if(NID == 1):
+    if(NID == l1_NID):
         node.SetUpFlagL1(True)
-    if(NID == 2):
+    if(NID == l2_NID):
         node.SetUpFlagL2(True)
-    if(NID == 3):
+    if(NID == l3_NID):
         node.SetUpFlagL3(True)
-    if(NID == 4):
+    if(NID == l4_NID):
         node.SetUpFlagL4(True)
 
 
 def setDownFlag(NID):
-    if(NID == 1):
+    if(NID == l1_NID):
         node.SetUpFlagL1(False)
-    if(NID == 2):
+    if(NID == l2_NID):
         node.SetUpFlagL2(False)
-    if(NID == 3):
+    if(NID == l3_NID):
         node.SetUpFlagL3(False)
-    if(NID == 4):
+    if(NID == l4_NID):
         node.SetUpFlagL4(False)
 
 # Function: sendto()
@@ -337,28 +341,27 @@ def send_tcp(dest_nid, message):
 
 def ping_timeout(NID):
     print("Checking "+str(NID))
-    print("Node: "+str(node.GetUpFlagL1()))
     for i in range(15):
-        if (NID == 1 and node.GetUpFlagL1()):
+        if (NID == l1_NID and node.GetUpFlagL1()):
             return
-        elif (NID == 2 and node.GetUpFlagL2()):
+        elif (NID == l2_NID and node.GetUpFlagL2()):
             return
-        elif (NID == 3 and node.GetUpFlagL3()):
+        elif (NID == l3_NID and node.GetUpFlagL3()):
             return
-        elif (NID == 4 and node.GetUpFlagL4()):
+        elif (NID == l4_NID and node.GetUpFlagL4()):
             return
-
-        time.sleep(.1)
+        time.sleep(.50)
 
     if (NID in node.routing_table):
         del node.routing_table[NID]
+
     print("\nNode "+str(NID)+" is down")
     setDownFlag(NID)
 
     
 
 # function: hello (alive)
-def send_udp(dest_nid, message, dv_flag):
+def send_udp(dest_nid, message, dv_flag, ping_flag):
 
     # global variables
     global NID, hostname, tcp_port
@@ -368,22 +371,23 @@ def send_udp(dest_nid, message, dv_flag):
     local_routing_table = node.Get_routing_table()
 
     # DV Propagation
-    if (dv_flag):
-        if dest_nid == str(l1_NID):
+    if (dv_flag or ping_flag):
+        if str(dest_nid) == str(l1_NID):
             HOST = l1_hostname
             PORT = l1_udp_port
 
-        elif dest_nid == str(l2_NID):
+        elif str(dest_nid) == str(l2_NID):
             HOST = l2_hostname
             PORT = l2_udp_port
 
-        elif dest_nid == str(l3_NID):
+        elif str(dest_nid) == str(l3_NID):
             HOST = l3_hostname
             PORT = l3_udp_port
 
-        elif dest_nid == str(l4_NID):
+        elif str(dest_nid) == str(l4_NID):
             HOST = l4_hostname
             PORT = l4_udp_port
+
 
     # Forwarding Messages
     elif int(dest_nid) in local_routing_table:
@@ -423,19 +427,23 @@ def send_udp(dest_nid, message, dv_flag):
 def pingNode():
     pingMessage = "p:0:"+str(NID)
     if (l1_NID != 0):
-        send_udp(str(l1_NID), pingMessage, False)
+        setDownFlag(l1_NID)
+        send_udp(str(l1_NID), pingMessage, False, True)
         t1 = threading.Thread(target=ping_timeout,args=(l1_NID,))
         t1.start()
     if (l2_NID != 0):
-        send_udp(str(l2_NID), pingMessage, False)
+        setDownFlag(l2_NID)
+        send_udp(str(l2_NID), pingMessage, False, True)
         t2 = threading.Thread(target=ping_timeout,args=(l2_NID,))
         t2.start()
     if (l3_NID != 0):
-        send_udp(str(l3_NID), pingMessage, False)
+        setDownFlag(l3_NID)
+        send_udp(str(l3_NID), pingMessage, False, True)
         t3 = threading.Thread(target=ping_timeout,args=(l3_NID,))
         t3.start()
     if (l4_NID != 0):
-        send_udp(str(l4_NID), pingMessage, False)
+        setDownFlag(l4_NID)
+        send_udp(str(l4_NID), pingMessage, False, True)
         t4 = threading.Thread(target=ping_timeout,args=(l4_NID,))
         t4.start()
 
@@ -537,10 +545,13 @@ def PrintInfo():
         print("\t"+str(value[0])+"\t"+str(value[1])+"\t"+str(value[2]))
     os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
+
+
 # update the route
 def sendDV():
     message = "route:"+str(NID)
     temp = node.Get_routing_table()
+
 
     for key, value in temp.items():
         message += (":"+str(value))
@@ -549,34 +560,26 @@ def sendDV():
     print (message)
 
     if (l1_NID != 0 ):
-        send_udp(str(l1_NID), message, True)
+        send_udp(str(l1_NID), message, True, False)
     if (l2_NID != 0 ):
-        send_udp(str(l2_NID), message, True)
+        send_udp(str(l2_NID), message, True, False)
     if (l3_NID != 0 ):
-        send_udp(str(l3_NID), message, True)
+        send_udp(str(l3_NID), message, True, False)
     if (l4_NID != 0 ):
-        send_udp(str(l4_NID), message, True)
+        send_udp(str(l4_NID), message, True, False)
 
-    node.remove_nodes = []
 
 def init_routing_table():
-    linksAll = (node.Get_link_table())
-    myLink = linksAll[NID]
     node.Set_routing_table(NID,0,NID)
-    if (l1_NID != 0):
-        node.Set_routing_table(l1_NID, 1, l1_NID)
-    if (l2_NID != 0):
-        node.Set_routing_table(l2_NID, 1, l2_NID)
-    if (l3_NID != 0):
-        node.Set_routing_table(l3_NID, 1, l3_NID)
-    if (l4_NID != 0):
-        node.Set_routing_table(l4_NID, 1, l4_NID)
-
-    node.removed_nodes = []
 
 def background_tasks():
+    i = 0
     while(True):
-        time.sleep(13)
+        if i < 5:
+            i = 0
+            node.removed_nodes = []
+        i += 1
+        time.sleep(20)
         #if (len(node.Get_routing_table()) == 1):
         #    continue
         pingNode()
@@ -640,7 +643,7 @@ def main(argv):
             dest_nid = input("enter node to message: ")
             message = input("enter the message you want to send: ")
             message = dest_nid+":"+message
-            send_udp(dest_nid, message, False)
+            send_udp(dest_nid, message, False, False)
             os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
         # selection: quit
