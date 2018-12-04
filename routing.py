@@ -227,6 +227,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
                     continue
             else:
                 node.Set_routing_table(int(nodeE),int(new_routing[i][1])+1,sender)
+                setUpFlags(int(nodeE))
                 print("New Routing Entry Added\nNode : "+nodeE+"\nThrough : "+str(sender))
             #elif (my_routing[i][received[]):
 
@@ -256,11 +257,11 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 
         # Ping request
         elif (check[0] == "p" and check[1] == "0"):
+            print("PING RECIEVED SENDING RESPONSE")
             ping_message = "p:1:"+str(NID)
             send_udp(int(check[2]), ping_message, False)
         # Ping echo-reply
         elif (check[0] == "p" and check[1] == "1"):
-            setUpFlag(int(check[2]))
             print ("Node: "+check[2]+" is up")
             setUpFlag(int(check[2]))
         elif (int(check[0]) == NID):
@@ -335,6 +336,8 @@ def send_tcp(dest_nid, message):
         pass
 
 def ping_timeout(NID):
+    print("Checking "+str(NID))
+    print("Node: "+str(node.GetUpFlagL1()))
     for i in range(15):
         if (NID == 1 and node.GetUpFlagL1()):
             return
@@ -349,7 +352,6 @@ def ping_timeout(NID):
 
     if (NID in node.routing_table):
         del node.routing_table[NID]
-        node.removed_nodes.append(NID)
     print("\nNode "+str(NID)+" is down")
     setDownFlag(NID)
 
@@ -574,11 +576,13 @@ def init_routing_table():
 
 def background_tasks():
     while(True):
-        time.sleep(15)
-        if (len(node.Get_routing_table()) == 1):
-            continue
-        sendDV()
+        time.sleep(13)
+        #if (len(node.Get_routing_table()) == 1):
+        #    continue
         pingNode()
+        time.sleep(2)
+        sendDV()
+        print("Background Running")
 
 # main function
 def main(argv):
