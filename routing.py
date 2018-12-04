@@ -93,6 +93,7 @@ class Node(object):
         self.host_name = host_name
         self.udp_port = udp_port
         self.routing_table = {}
+        self.removed_nodes = []
 
         if links is not None:
             self.links = list(links)
@@ -231,10 +232,9 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 
     def handleDV(self, message):
         received = []
-        print("\n[MSG] DV Message Recieved from node: "+message[1]+"\nContents:  "+message[2]+message[3]+"\n")
 
         sender = int(message[1])
-        for i in range(2, len(message)):
+        for i in range(2, len(message)-1):
             received.append(message[i].strip('()').split(","))
         temp = node.Get_routing_table()
         self.compareEntries(received, sender)
@@ -260,6 +260,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             send_udp(int(check[2]), ping_message, False)
         # Ping echo-reply
         elif (check[0] == "p" and check[1] == "1"):
+            setUpFlag(int(check[2]))
             print ("Node: "+check[2]+" is up")
             setUpFlag(int(check[2]))
         elif (int(check[0]) == NID):
@@ -269,25 +270,25 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             send_udp(check[0], message, False)
 
 #Setting the Flags when we find that a connected node is up
-def setUpFlag(NID)
-    if(NID == 1)
+def setUpFlag(NID):
+    if(NID == 1):
         node.SetUpFlagL1(True)
-    if(NID == 2)
+    if(NID == 2):
         node.SetUpFlagL2(True)
-    if(NID == 3)
+    if(NID == 3):
         node.SetUpFlagL3(True)
-    if(NID == 4)
+    if(NID == 4):
         node.SetUpFlagL4(True)
 
 
-def setDownFlag(NID)
-    if(NID == 1)
+def setDownFlag(NID):
+    if(NID == 1):
         node.SetUpFlagL1(False)
-    if(NID == 2)
+    if(NID == 2):
         node.SetUpFlagL2(False)
-    if(NID == 3)
+    if(NID == 3):
         node.SetUpFlagL3(False)
-    if(NID == 4)
+    if(NID == 4):
         node.SetUpFlagL4(False)
 
 # Function: sendto()
@@ -334,18 +335,22 @@ def send_tcp(dest_nid, message):
         pass
 
 def ping_timeout(NID):
-    for i in range(10):
-        if (NID == 1):
-            node.GetUpFlagL1()
-        elif (NID == 2):
-            node.GetUpFlagL2()
-        elif (NID == 3):
-            node.GetUpFlagL3()
-        elif (NID == 4):
-            node.GetUpFlagL4()
+    for i in range(15):
+        if (NID == 1 and node.GetUpFlagL1()):
+            return
+        elif (NID == 2 and node.GetUpFlagL2()):
+            return
+        elif (NID == 3 and node.GetUpFlagL3()):
+            return
+        elif (NID == 4 and node.GetUpFlagL4()):
+            return
+
         time.sleep(.1)
 
-    print("Node "+NID+" is down")
+    if (NID in node.routing_table):
+        del node.routing_table[NID]
+        node.removed_nodes.append(NID)
+    print("\nNode "+str(NID)+" is down")
     setDownFlag(NID)
 
     
@@ -417,16 +422,20 @@ def pingNode():
     pingMessage = "p:0:"+str(NID)
     if (l1_NID != 0):
         send_udp(str(l1_NID), pingMessage, False)
-        threading.Thread(target=pingNode,args=(l1_NID))
+        t1 = threading.Thread(target=ping_timeout,args=(l1_NID,))
+        t1.start()
     if (l2_NID != 0):
         send_udp(str(l2_NID), pingMessage, False)
-        threading.Thread(target=pingNode,args=(l2_NID))
+        t2 = threading.Thread(target=ping_timeout,args=(l2_NID,))
+        t2.start()
     if (l3_NID != 0):
         send_udp(str(l3_NID), pingMessage, False)
-        threading.Thread(target=pingNode,args=(l3_NID))
+        t3 = threading.Thread(target=ping_timeout,args=(l3_NID,))
+        t3.start()
     if (l4_NID != 0):
         send_udp(str(l4_NID), pingMessage, False)
-        threading.Thread(target=pingNode,args=(l4_NID))
+        t4 = threading.Thread(target=ping_timeout,args=(l4_NID,))
+        t4.start()
 
 
 # function: start listener
@@ -510,42 +519,43 @@ def PrintInfo():
 
     # global variables
     global node, NID, hostname, udp_port, tcp_port
+    temp = node.Get_routing_table()
 
     # output data
     os.system('clear')
     print("NID: " + str(NID))
-    print("Link Table: " + str(node.Get_link_table()))
-    print("Address Data: " + str(node.Get_address_data_table()))
-    print("Routing Table: " + str(node.Get_routing_table()))
+    print("\n\tLink Table:\n\tNODE\tL1\tL2\tL3\tL4")
+    for key, value in node.Get_link_table().items():
+        print("\t"+str(key)+"\t"+str(value[0])+"\t"+str(value[1])+"\t"+str(value[2])+"\t"+str(value[3]))
+    print("\n\tAddress Data Table:\n\tDEST\tADDR\t\tPORT")
+    for key, value in node.Get_address_data_table().items():
+        print("\t"+str(value[0])+"\t"+str(value[1])+"\t"+str(value[2]))
+    print("\n\tRouting Table:\n\tDEST\tCOST\tNEXT")
+    for key, value in temp.items():
+        print("\t"+str(value[0])+"\t"+str(value[1])+"\t"+str(value[2]))
     os.system("""bash -c 'read -s -n 1 -p "Press any key to continue..."'""")
 
 # update the route
 def sendDV():
-    linksAll = (node.Get_link_table())
-    myLink = linksAll[NID]
     message = "route:"+str(NID)
     temp = node.Get_routing_table()
 
     for key, value in temp.items():
         message += (":"+str(value))
+    message+= ":"+str(node.removed_nodes)
 
-    if (l1_NID != 0):
-        message += (":"+str(temp[l1_NID]))
-    if (l2_NID != 0):
-        message += (":"+str(temp[l2_NID]))
-    if (l3_NID != 0):
-        message += (":"+str(temp[l3_NID]))
-    if (l4_NID != 0):
-        message += (":"+str(temp[l4_NID]))
+    print (message)
 
-    if (l1_NID != 0):
+    if (l1_NID != 0 ):
         send_udp(str(l1_NID), message, True)
-    if (l2_NID != 0):
+    if (l2_NID != 0 ):
         send_udp(str(l2_NID), message, True)
-    if (l3_NID != 0):
+    if (l3_NID != 0 ):
         send_udp(str(l3_NID), message, True)
-    if (l4_NID != 0):
+    if (l4_NID != 0 ):
         send_udp(str(l4_NID), message, True)
+
+    node.remove_nodes = []
 
 def init_routing_table():
     linksAll = (node.Get_link_table())
@@ -560,6 +570,15 @@ def init_routing_table():
     if (l4_NID != 0):
         node.Set_routing_table(l4_NID, 1, l4_NID)
 
+    node.removed_nodes = []
+
+def background_tasks():
+    while(True):
+        time.sleep(15)
+        if (len(node.Get_routing_table()) == 1):
+            continue
+        sendDV()
+        pingNode()
 
 # main function
 def main(argv):
@@ -580,6 +599,8 @@ def main(argv):
 
     # start UDP listener
     start_listener()
+    t1 = threading.Thread(target=background_tasks)
+    t1.start()
 
     # initialize routing table
     init_routing_table()
@@ -589,8 +610,6 @@ def main(argv):
 
         #print menu options
         os.system('clear')
-        sendDV()
-        pingNode()
         print("Enter 'info' to check network information")
         print("Enter 'send_tcp' to message another node via TCP")
         print("Enter 'send_udp' to message another node via UDP")
