@@ -1,3 +1,7 @@
+# Routing.py
+# Implementation of the FSC Routing project by Jared Knutson, Clayton Franklin, and Ian Grant.
+# Class: CPE 400
+# Date: 05 Dec 2018
 # header files
 import socket
 import sys
@@ -576,7 +580,7 @@ def sendDV():
 def init_routing_table():
     node.Set_routing_table(NID,0,NID)
 
-# Starts the background tasks for scanning nodes
+# Starts the background tasks
 def background_tasks():
     i = 0
     while(True):
