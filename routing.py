@@ -1,3 +1,7 @@
+# Routing.py
+# Implementation of the FSC Routing project by Jared Knutson, Clayton Franklin, and Ian Grant.
+# Class: CPE 400
+# Date: 05 Dec 2018
 # header files
 import socket
 import signal
@@ -242,6 +246,8 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
                     print("New Routing Entry Added\nNode : "+nodeE+"\nThrough : "+str(sender))
             #elif (my_routing[i][received[]):
 
+
+    #Pull information from the distance vector
     def handleDV(self, message):
         received = []
         dead_list = []
@@ -298,7 +304,7 @@ def setUpFlag(NID):
     if(NID == l4_NID):
         node.SetUpFlagL4(True)
 
-
+#Setting flags to false when a node is turned off.
 def setDownFlag(NID):
     if(NID == l1_NID):
         node.SetUpFlagL1(False)
@@ -352,6 +358,7 @@ def send_tcp(dest_nid, message):
         print('error, message not sent')
         pass
 
+#A function to check if a node is up and if it does not reply, it is taken out of each node's routing table.
 def ping_timeout(NID):
     global print_debug
     if(print_debug):
@@ -374,7 +381,7 @@ def ping_timeout(NID):
         print("\nNode "+str(NID)+" is down")
     setDownFlag(NID)
 
-    
+
 
 # function: hello (alive)
 def send_udp(dest_nid, message, dv_flag, ping_flag):
@@ -442,6 +449,7 @@ def send_udp(dest_nid, message, dv_flag, ping_flag):
         print('error, message not sent')
         pass
 
+# A function to ping nodes in order to update routing tables. Uses threads to scan if nodes are down in the backgroud.
 def pingNode():
     pingMessage = "p:0:"+str(NID)
     if (l1_NID != 0):
@@ -592,6 +600,7 @@ def sendDV():
 def init_routing_table():
     node.Set_routing_table(NID,0,NID)
 
+# Starts the background tasks
 def background_tasks():
     global run
     i = 0
