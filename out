@@ -1,0 +1,9 @@
+[H[2J{}
+{1: (2, 3, 0, 0)}
+{1: (2, 3, 0, 0), 2: (1, 4, 0, 0)}
+{1: (2, 3, 0, 0), 2: (1, 4, 0, 0), 3: (1, 4, 0, 0)}
+Enter 'info' to check network information
+Enter 'send_tcp' to message another node via TCP
+Enter 'send_udp' to message another node via UDP
+Enter 'quit' to end program
+Enter Selection: [H[2J
